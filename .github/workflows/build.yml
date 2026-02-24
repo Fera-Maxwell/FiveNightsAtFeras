@@ -21,7 +21,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install arcade pyinstaller
+        run: pip install --upgrade arcade pyinstaller
 
       - name: Get commit message for filename
         id: commit
