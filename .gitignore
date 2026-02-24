@@ -6,3 +6,6 @@ __pycache__/
 __pycache__/
 build/
 dist/
+main_TRUE_BACKUP.py
+assets/logs/*.txt
+*.zip
