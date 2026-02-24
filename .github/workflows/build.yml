@@ -1,0 +1,112 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # ─────────────────────────────────────────
+  # BUILD WINDOWS EXE
+  # ─────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install arcade pyinstaller
+
+      - name: Get commit message for filename
+        id: commit
+        run: echo "msg=$(git log -1 --pretty=%s)" >> $env:GITHUB_OUTPUT
+
+      - name: Build Windows EXE
+        run: pyinstaller --onefile --windowed --add-data "assets;assets" --name "FiveNightsAtFeras-${{ steps.commit.outputs.msg }}_WIN" main.py
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/FiveNightsAtFeras-${{ steps.commit.outputs.msg }}_WIN.exe
+
+  # ─────────────────────────────────────────
+  # BUILD LINUX BINARY
+  # ─────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgl1 libglib2.0-0
+
+      - name: Install dependencies
+        run: pip install arcade pyinstaller
+
+      - name: Get commit message for filename
+        id: commit
+        run: echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+
+      - name: Build Linux binary
+        run: pyinstaller --onefile --add-data "assets:assets" --name "FiveNightsAtFeras-${{ steps.commit.outputs.msg }}_LIN" main.py
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: dist/FiveNightsAtFeras-${{ steps.commit.outputs.msg }}_LIN
+
+  # ─────────────────────────────────────────
+  # PUBLISH BOTH INTO ONE RELEASE
+  # ─────────────────────────────────────────
+  release:
+    runs-on: ubuntu-latest
+    needs: [ build-windows, build-linux ]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get commit message
+        id: commit
+        run: echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+
+      - name: Download Windows build
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: dist/
+
+      - name: Download Linux build
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.commit.outputs.msg }}
+          name: ${{ steps.commit.outputs.msg }}
+          prerelease: true        # marks it as Pre-release like your a0.0.1
+          make_latest: false      # keeps ALPHA tag behaviour
+          files: |
+            dist/FiveNightsAtFeras-${{ steps.commit.outputs.msg }}_WIN.exe
+            dist/FiveNightsAtFeras-${{ steps.commit.outputs.msg }}_LIN
