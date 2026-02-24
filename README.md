@@ -36,7 +36,7 @@ Beyond the current code available here, the full project is scaling toward the f
 ---
 
 ### 🛠️ KNOWN ISSUES / BUGS
-markdown
+
 * **Camera 12:** Feed currently displays as **[ REDACTED ]**. This is a known software limitation and is intended behavior for the current build.
 ${\color{#0d1117}\text{FERA WILL SUFFER FROM HER CRIMES}}$
 * **Console Logs:** Occasional "NULL" reference strings appearing during runtime.
