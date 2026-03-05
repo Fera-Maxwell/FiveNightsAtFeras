@@ -1,4 +1,4 @@
-# 📁 Insanity At Fera's — Version a0.0.3 (Early Alpha)
+# 📁 Insanity At Fera's — Version a0.0.4 (Early Alpha)
 
 **Developer Note:** This repository contains the core logic for a horror-survival project. The current focus is on stability, AI framework, and interface architecture.
 
@@ -13,6 +13,7 @@ The following features are currently pushed and functional in the Python source:
 * **Settings:** Subtitles and Static FX toggles with live ON/OFF display, saved to disk.
 * **Confirmation Screen:** New Game prompts wipe confirmation before erasing save data.
 * **Office View:** Background art loaded from `assets/Office_ALPHA.png`. Door controls (A/D to close left/right) and door lights (Q/E) functional with power drain.
+* **Office Panning:** Mouse-driven horizontal pan across a 1920px wide background. View smoothly lerps toward cursor position. Camera view disables panning while active.
 * **Camera System:** 12-node camera network with CRT static/glitch overlay, dial-in mode (press K), name-based or number-based navigation, and CRT hum audio.
 * **Attack Pipeline:** Characters progress through a forced `roaming → hall → door_cam → at_door` sequence. 20-second attack timer at door. Closing the door clamps timer to 5 seconds and forces retreat to spawn.
 * **AI Movement:** Per-character AI level scaling (0–20). Movement tick fires every 5 seconds at 1/20 base chance per AI level.
@@ -57,6 +58,7 @@ ${\color{#0d1117}\text{FERA WILL SUFFER FROM HER CRIMES}}$
 * **Console Logs:** Occasional `NULL` reference strings during runtime. Also intended.
 * **Jason / Jay:** Configurable in Custom Night but no active attack behavior yet. Jay's Video Time drains but does not trigger vent entry.
 * **Door Lights:** Toggle functional but no visual effect in office view yet (art pending).
+* **Office Background:** Panning requires a 1920px wide `Office_ALPHA.png`. Standard 1280px image will not pan correctly.
 
 ---
 
