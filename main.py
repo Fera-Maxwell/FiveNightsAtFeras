@@ -1,77 +1,4 @@
 # WHAT ARE YOU DOING HERE!?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import arcade
 import random
 import os
@@ -113,7 +40,8 @@ def resource_path(relative_path):
 # ─────────────────────────────────────────────────────────────────────────────
 SCREEN_WIDTH  = 1280
 SCREEN_HEIGHT = 720
-SCREEN_TITLE  = "Five Nights At Fera's"
+SCREEN_TITLE  = "Insanity At Fera's"
+BG_WIDTH      = 1920   # wide office render width for panning
 
 STATIC_MIN  = 0.2
 STATIC_MAX  = 1.0
@@ -219,8 +147,8 @@ def draw_static(alpha, glitch_y, glitch_height, glitch_offset):
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE CONSTANTS
 # ─────────────────────────────────────────────────────────────────────────────
-HALL_TO_DOOR_CAM = {"03": "06", "04": "07"}   # hall cam -> door cam
-DOOR_CAM_TO_SIDE = {"06": "LEFT", "07": "RIGHT"}  # door cam -> which side
+HALL_TO_DOOR_CAM = {"03": "06", "04": "07"}
+DOOR_CAM_TO_SIDE = {"06": "LEFT", "07": "RIGHT"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -251,6 +179,7 @@ class MainMenuView(arcade.View):
             ("CONTINUE",     has_save),
             ("NEW GAME",     True),
             ("CUSTOM NIGHT", custom),
+            ("CREDITS",      True),
             ("EXIT",         True),
         ]
 
@@ -262,14 +191,14 @@ class MainMenuView(arcade.View):
         arcade.draw_lrbt_rectangle_filled(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, (5, 5, 5, 255))
         draw_static(self.static_alpha, self.glitch_y, self.glitch_height, self.glitch_offset)
 
-        arcade.Text("FIVE NIGHTS AT FERA'S",
+        arcade.Text("INSANITY AT FERA'S",
                     SCREEN_WIDTH // 2, SCREEN_HEIGHT - 120,
                     arcade.color.WHITE, font_size=42, font_name="Arial",
                     bold=True, anchor_x="center").draw()
 
         if self.blink_visible:
             arcade.Text("_",
-                        SCREEN_WIDTH // 2 + 320, SCREEN_HEIGHT - 120,
+                        SCREEN_WIDTH // 2 + 280, SCREEN_HEIGHT - 120,
                         arcade.color.WHITE, font_size=42, font_name="Arial",
                         bold=True, anchor_x="left").draw()
 
@@ -375,6 +304,8 @@ class MainMenuView(arcade.View):
                 self.window.show_view(ConfirmationView(self))
             elif label == "CUSTOM NIGHT":
                 self.window.show_view(CustomNightView())
+            elif label == "CREDITS":
+                self.window.show_view(CreditsView())
             elif label == "EXIT":
                 arcade.exit()
 
@@ -405,6 +336,37 @@ class MainMenuView(arcade.View):
             if enabled and abs(y - btn_y) < 30:
                 self.selected = i
                 break
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CREDITS
+# ─────────────────────────────────────────────────────────────────────────────
+class CreditsView(arcade.View):
+    def on_draw(self):
+        self.clear()
+        arcade.draw_lrbt_rectangle_filled(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, (8, 8, 8, 255))
+        arcade.Text("CREDITS", SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100,
+                    arcade.color.WHITE, font_size=36, bold=True,
+                    anchor_x="center", font_name="Arial").draw()
+        arcade.Text("Developer: Fera Maxwell\nAssisted by: Claude (Anthropic)\nCompiled for Windows by: Bluu",
+            SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40,
+            arcade.color.GRAY, font_size=20,
+            anchor_x="center", anchor_y="center",
+            font_name="Arial", multiline=True,
+            width=SCREEN_WIDTH, align="center").draw()
+
+        arcade.Text('Testers = ["Crash", "Bluu"]',
+            SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80,
+            arcade.color.GRAY, font_size=20,
+            anchor_x="center", anchor_y="center",
+            font_name="Monospace").draw()
+        arcade.Text("ESC to go back", SCREEN_WIDTH // 2, 40,
+                    (70, 70, 70, 255), font_size=12,
+                    anchor_x="center", font_name="Arial").draw()
+
+    def on_key_press(self, key, modifiers):
+        if key in (arcade.key.ESCAPE, arcade.key.ENTER):
+            self.window.show_view(MainMenuView())
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -667,10 +629,8 @@ class FerasGame(arcade.View):
         self.ai_levels = custom_ai if custom_ai else {"Fera": 2, "Jason": 0, "May": 2, "Jay": 0}
         self.locations = {"Fera": "01", "Jason": "01", "May": "01", "Jay": "09"}
 
-        # Pipeline: "roaming" | "hall" | "door_cam" | "at_door"
         self.stages      = {name: "roaming" for name in self.locations}
         self.door_timers = {name: 0.0      for name in self.locations}
-        # Which door side they're actually approaching (set dynamically)
         self.door_side   = {name: None     for name in self.locations}
 
         self.jay_video_time = 100.0
@@ -684,6 +644,11 @@ class FerasGame(arcade.View):
 
         self.ai_timer    = 0.0
         self.ai_interval = 5.0
+
+        # ── Office pan ────────────────────────────────────────────────────────
+        self.pan_offset = 320.0   # starts centered (max pan = 640)
+        self.pan_target = 320.0
+        self.pan_speed  = 8.0
 
         self.ui_text = arcade.Text("", 20, 20, arcade.color.LIME_GREEN,
                                    font_size=25, font_name="Arial")
@@ -762,17 +727,12 @@ class FerasGame(arcade.View):
         stage = self.stages[name]
         loc   = self.locations[name]
 
-        # ROAMING: did they wander into a hall?
         if stage == "roaming":
             if loc in HALL_TO_DOOR_CAM:
                 self.stages[name] = "hall"
                 if DEV_MODE:
                     print(f"DEV | {name} entered hall at CAM_{loc}")
 
-        # HALL: force move to door cam next tick (handled in move_character)
-        # Nothing extra here
-
-        # DOOR_CAM: record which side, move to at_door
         elif stage == "door_cam":
             if loc in DOOR_CAM_TO_SIDE:
                 self.door_side[name]   = DOOR_CAM_TO_SIDE[loc]
@@ -781,19 +741,16 @@ class FerasGame(arcade.View):
                 if DEV_MODE:
                     print(f"DEV | {name} reached {self.door_side[name]} door, 20s timer started")
 
-        # In advance_pipeline, AT_DOOR stage, replace the current logic with:
         elif stage == "at_door":
             side = self.door_side[name]
 
             if self.door_closed_for_side(side) and self.door_timers[name] > 5.0:
-                # Door just closed while they were waiting — clamp to 5s retreat timer
                 self.door_timers[name] = 5.0
 
             self.door_timers[name] -= delta_time
 
             if self.door_timers[name] <= 0:
                 if self.door_closed_for_side(side):
-                    # Retreated
                     self.locations[name] = self.spawn_for(name)
                     self.stages[name] = "roaming"
                     self.door_timers[name] = 0.0
@@ -813,7 +770,6 @@ class FerasGame(arcade.View):
     def move_character(self, name):
         stage = self.stages[name]
 
-        # Hall: force to door cam
         if stage == "hall":
             door_cam = HALL_TO_DOOR_CAM.get(self.locations[name])
             if door_cam:
@@ -823,11 +779,9 @@ class FerasGame(arcade.View):
                     print(f"DEV | {name} forced to CAM_{door_cam}")
             return
 
-        # Locked in pipeline — no free movement
         if stage in ("door_cam", "at_door"):
             return
 
-        # Normal roaming
         paths = {
             "01": ["02", "05"], "02": ["03", "04", "08", "09", "10"],
             "03": ["06"],        "04": ["07"],        "05": ["01", "02"],
@@ -914,9 +868,12 @@ class FerasGame(arcade.View):
 
         if not self.camera_up:
             if self.office_bg:
+                # Pan: draw 1920px image shifted so we see a 1280px slice
+                src_x = int(self.pan_offset)
                 arcade.draw_texture_rect(
                     self.office_bg,
-                    arcade.LRBT(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT))
+                    arcade.LRBT(-src_x, BG_WIDTH - src_x, 0, SCREEN_HEIGHT)
+                )
             arcade.Text("[ SPACE ] Open cameras",
                         SCREEN_WIDTH // 2, 50,
                         (50, 50, 50, 255), font_size=12, font_name="Arial",
@@ -983,6 +940,11 @@ class FerasGame(arcade.View):
             self.cursor_visible = not self.cursor_visible
             self.cursor_timer   = 0.0
 
+        # Smooth office pan
+        if not self.camera_up:
+            self.pan_offset += (self.pan_target - self.pan_offset) * self.pan_speed * delta_time
+            self.pan_offset  = max(0.0, min(float(BG_WIDTH - SCREEN_WIDTH), self.pan_offset))
+
         # Jay video drain
         drain_rate = self.ai_levels.get("Jay", 0) * 0.5
         if drain_rate > 0:
@@ -993,13 +955,11 @@ class FerasGame(arcade.View):
             else:
                 self.jay_video_time = min(100.0, self.jay_video_time + delta_time * 2.0)
 
-        # Attack pipeline — every frame
         for name in list(self.locations.keys()):
             self.advance_pipeline(name, delta_time)
             if self.game_over:
                 return
 
-        # Normal AI movement tick
         self.ai_timer += delta_time
         if self.ai_timer >= self.ai_interval:
             self.ai_timer = 0.0
@@ -1047,6 +1007,15 @@ class FerasGame(arcade.View):
         elif self.night == 5:
             save["custom_unlocked"] = True
         write_save(save)
+
+    # ── on_mouse_motion ──────────────────────────────────────────────────────
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        if self.camera_up:
+            return
+        # Map mouse X (0→1280) to pan target (0→640)
+        max_pan = float(BG_WIDTH - SCREEN_WIDTH)
+        self.pan_target = (x / SCREEN_WIDTH) * max_pan
 
     # ── on_key_press ─────────────────────────────────────────────────────────
 
