@@ -168,109 +168,6 @@ STATIC_FADE = 1.5
 # ─────────────────────────────────────────────────────────────────────────────
 DEV_MODE = False
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ⚠️  RAT TRAP — punishment packs
-# Drop MP4 files in assets/.secret/
-# To add more: just append filename to the list. That's it. Pure evil.
-# ${\color{#0d1117}\text{catlaugh.mp4 rattrap.mp4 anime.mp4 wayw.mp4}}$
-# ─────────────────────────────────────────────────────────────────────────────
-PUNISHMENT_PACKS = [
-    "catlaugh.mp4",
-    "rattrap.mp4",
-    "anime.mp4",
-    "wayw.mp4",
-]
-
-def volume_to_max():
-    """Shotgun every audio system. No survivors."""
-    os.system("pactl set-sink-volume @DEFAULT_SINK@ 100%")        # pulseaudio / pipewire
-    os.system("wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0")        # pipewire native
-    os.system("amixer set Master 100% unmute")                     # alsa
-    os.system("amixer -D pulse set Master 100% unmute")            # alsa via pulse
-    os.system("amixer -D pipewire set Master 100% unmute")         # alsa via pipewire
-    os.system(                                                     # windows: spam vol up key 15x
-        'powershell -c "(New-Object -comObject WScript.Shell)'
-        '.SendKeys([char]175+[char]175+[char]175+[char]175+[char]175'
-        '+[char]175+[char]175+[char]175+[char]175+[char]175'
-        '+[char]175+[char]175+[char]175+[char]175+[char]175)"'
-    )
-    os.system("nircmd.exe setsysvolume 65535")                     # windows nircmd if installed
-
-
-def trigger_rat_trap():
-    """Picked randomly. All options are bad. This is intentional."""
-    filename = random.choice(PUNISHMENT_PACKS)
-    vid_path = resource_path(os.path.join("assets", ".secret", filename))
-
-    def _run():
-        volume_to_max()
-
-        pygame.init()
-        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
-
-        info   = pygame.display.Info()
-        sw, sh = info.current_w, info.current_h
-        screen = pygame.display.set_mode((sw, sh), pygame.NOFRAME)
-        pygame.display.set_caption("")
-
-        cap = cv2.VideoCapture(vid_path)
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-
-        # Extract and play audio via a temp wav dump
-        # pygame can't decode mp4 audio directly so we rip it with opencv's backend
-        # if that fails we just play silent — the video alone is punishment enough
-        try:
-            import subprocess
-            tmp_audio = os.path.join(os.path.dirname(vid_path), ".tmp_audio.wav")
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", vid_path, "-vn", "-ar", "44100",
-                 "-ac", "2", "-f", "wav", tmp_audio],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
-            pygame.mixer.music.load(tmp_audio)
-            pygame.mixer.music.set_volume(1.0)
-            pygame.mixer.music.play()
-        except:
-            pass  # silent punishment is still punishment
-
-        clock  = pygame.time.Clock()
-        running = True
-
-        while running:
-            ret, frame = cap.read()
-            if not ret:
-                break  # video finished
-
-            # opencv gives BGR, pygame wants RGB
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = cv2.resize(frame, (sw, sh))
-            surf  = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
-            screen.blit(surf, (0, 0))
-            pygame.display.flip()
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-
-            clock.tick(fps)
-
-        cap.release()
-        pygame.quit()
-
-        # clean up temp audio
-        try:
-            os.remove(tmp_audio)
-        except:
-            pass
-
-        # Take the main game down with it. No escape.
-        os._exit(0)
-
-    t = threading.Thread(target=_run, daemon=True)
-    t.start()
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1268,7 +1165,100 @@ class FerasGame(arcade.View):
             self.shock_static()
             self.check_null_spawn()
 
+PUNISHMENT_PACKS = [
+    "catlaugh.mp4",
+    "rattrap.mp4",
+    "anime.mp4",
+    "wayw.mp4",
+]
 
+def volume_to_max():
+    """Shotgun every audio system. No survivors."""
+    os.system("pactl set-sink-volume @DEFAULT_SINK@ 100%")        # pulseaudio / pipewire
+    os.system("wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0")        # pipewire native
+    os.system("amixer set Master 100% unmute")                     # alsa
+    os.system("amixer -D pulse set Master 100% unmute")            # alsa via pulse
+    os.system("amixer -D pipewire set Master 100% unmute")         # alsa via pipewire
+    os.system(                                                     # windows: spam vol up key 15x
+        'powershell -c "(New-Object -comObject WScript.Shell)'
+        '.SendKeys([char]175+[char]175+[char]175+[char]175+[char]175'
+        '+[char]175+[char]175+[char]175+[char]175+[char]175'
+        '+[char]175+[char]175+[char]175+[char]175+[char]175)"'
+    )
+    os.system("nircmd.exe setsysvolume 65535")                     # windows nircmd if installed
+
+
+def trigger_rat_trap():
+    """Picked randomly. All options are bad. This is intentional."""
+    filename = random.choice(PUNISHMENT_PACKS)
+    vid_path = resource_path(os.path.join("assets", ".secret", filename))
+
+    def _run():
+        volume_to_max()
+
+        pygame.init()
+        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+
+        info   = pygame.display.Info()
+        sw, sh = info.current_w, info.current_h
+        screen = pygame.display.set_mode((sw, sh), pygame.NOFRAME)
+        pygame.display.set_caption("")
+
+        cap = cv2.VideoCapture(vid_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+
+        # Extract and play audio via a temp wav dump
+        # pygame can't decode mp4 audio directly so we rip it with opencv's backend
+        # if that fails we just play silent — the video alone is punishment enough
+        try:
+            import subprocess
+            tmp_audio = os.path.join(os.path.dirname(vid_path), ".tmp_audio.wav")
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", vid_path, "-vn", "-ar", "44100",
+                 "-ac", "2", "-f", "wav", tmp_audio],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            pygame.mixer.music.load(tmp_audio)
+            pygame.mixer.music.set_volume(1.0)
+            pygame.mixer.music.play()
+        except:
+            pass  # silent punishment is still punishment
+
+        clock  = pygame.time.Clock()
+        running = True
+
+        while running:
+            ret, frame = cap.read()
+            if not ret:
+                break  # video finished
+
+            # opencv gives BGR, pygame wants RGB
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.resize(frame, (sw, sh))
+            surf  = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
+            screen.blit(surf, (0, 0))
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+            clock.tick(fps)
+
+        cap.release()
+        pygame.quit()
+
+        # clean up temp audio
+        try:
+            os.remove(tmp_audio)
+        except:
+            pass
+
+        # Take the main game down with it. No escape.
+        os._exit(0)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
 # ─────────────────────────────────────────────────────────────────────────────
 # ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
