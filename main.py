@@ -471,14 +471,14 @@ class CreditsView(arcade.View):
         arcade.Text("CREDITS", SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100,
                     arcade.color.WHITE, font_size=36, bold=True,
                     anchor_x="center", font_name="Arial").draw()
-        arcade.Text("Developer: Fera Maxwell\nAssisted by: Claude (Anthropic)\nCompiled for Windows by: Bluu",
+        arcade.Text("Developer: Fera Maxwell\nAssisted by: Claude (Anthropic)\nCompiled for Windows by: Bluu",# bluu was here :3 shoutout to transgender people they are very cool <3
             SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40,
             arcade.color.GRAY, font_size=20,
             anchor_x="center", anchor_y="center",
             font_name="Arial", multiline=True,
             width=SCREEN_WIDTH, align="center").draw()
 
-        arcade.Text('Testers = ["Crash", "Bluu"]',
+        arcade.Text('Testers = ["Crash", "Bluu"]', # bluu was also here (greedy fuck) uhh ily crash :333
             SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80,
             arcade.color.GRAY, font_size=20,
             anchor_x="center", anchor_y="center",
