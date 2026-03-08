@@ -1,4 +1,115 @@
 # WHAT ARE YOU DOING HERE!?
+# Alright fine
+# Since you came here, BOTHERED TO COME
+# I will give you a secret
+# In the MAIN MENU press "CTRL+SHIFT+M" to 100% the game
+# DON'T TELL ANYONE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import arcade
 import random
 import os
@@ -6,6 +117,11 @@ import sys
 import json
 import logging
 import platform
+import threading
+
+# i added pygame AND opencv JUST for this. you're welcome.
+import pygame
+import cv2
 
 logging.getLogger("arcade").setLevel(logging.CRITICAL)
 
@@ -41,7 +157,7 @@ def resource_path(relative_path):
 SCREEN_WIDTH  = 1280
 SCREEN_HEIGHT = 720
 SCREEN_TITLE  = "Insanity At Fera's"
-BG_WIDTH      = 1920   # wide office render width for panning
+BG_WIDTH      = 1920
 
 STATIC_MIN  = 0.2
 STATIC_MAX  = 1.0
@@ -51,6 +167,108 @@ STATIC_FADE = 1.5
 # DEV MODE
 # ─────────────────────────────────────────────────────────────────────────────
 DEV_MODE = False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ⚠️  RAT TRAP — punishment packs
+# Drop MP4 files in assets/.secret/
+# To add more: just append filename to the list. That's it. Pure evil.
+# ${\color{#0d1117}\text{catlaugh.mp4 rattrap.mp4 anime.mp4 wayw.mp4}}$
+# ─────────────────────────────────────────────────────────────────────────────
+PUNISHMENT_PACKS = [
+    "catlaugh.mp4",
+    "rattrap.mp4",
+    "anime.mp4",
+    "wayw.mp4",
+]
+
+def volume_to_max():
+    """Shotgun every audio system. No survivors."""
+    os.system("pactl set-sink-volume @DEFAULT_SINK@ 100%")        # pulseaudio / pipewire
+    os.system("wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0")        # pipewire native
+    os.system("amixer set Master 100% unmute")                     # alsa
+    os.system("amixer -D pulse set Master 100% unmute")            # alsa via pulse
+    os.system("amixer -D pipewire set Master 100% unmute")         # alsa via pipewire
+    os.system(                                                     # windows: spam vol up key 15x
+        'powershell -c "(New-Object -comObject WScript.Shell)'
+        '.SendKeys([char]175+[char]175+[char]175+[char]175+[char]175'
+        '+[char]175+[char]175+[char]175+[char]175+[char]175'
+        '+[char]175+[char]175+[char]175+[char]175+[char]175)"'
+    )
+    os.system("nircmd.exe setsysvolume 65535")                     # windows nircmd if installed
+
+
+def trigger_rat_trap():
+    """Picked randomly. All options are bad. This is intentional."""
+    filename = random.choice(PUNISHMENT_PACKS)
+    vid_path = resource_path(os.path.join("assets", ".secret", filename))
+
+    def _run():
+        volume_to_max()
+
+        pygame.init()
+        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+
+        info   = pygame.display.Info()
+        sw, sh = info.current_w, info.current_h
+        screen = pygame.display.set_mode((sw, sh), pygame.NOFRAME)
+        pygame.display.set_caption("")
+
+        cap = cv2.VideoCapture(vid_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+
+        # Extract and play audio via a temp wav dump
+        # pygame can't decode mp4 audio directly so we rip it with opencv's backend
+        # if that fails we just play silent — the video alone is punishment enough
+        try:
+            import subprocess
+            tmp_audio = os.path.join(os.path.dirname(vid_path), ".tmp_audio.wav")
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", vid_path, "-vn", "-ar", "44100",
+                 "-ac", "2", "-f", "wav", tmp_audio],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            pygame.mixer.music.load(tmp_audio)
+            pygame.mixer.music.set_volume(1.0)
+            pygame.mixer.music.play()
+        except:
+            pass  # silent punishment is still punishment
+
+        clock  = pygame.time.Clock()
+        running = True
+
+        while running:
+            ret, frame = cap.read()
+            if not ret:
+                break  # video finished
+
+            # opencv gives BGR, pygame wants RGB
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.resize(frame, (sw, sh))
+            surf  = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
+            screen.blit(surf, (0, 0))
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+            clock.tick(fps)
+
+        cap.release()
+        pygame.quit()
+
+        # clean up temp audio
+        try:
+            os.remove(tmp_audio)
+        except:
+            pass
+
+        # Take the main game down with it. No escape.
+        os._exit(0)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -172,8 +390,8 @@ class MainMenuView(arcade.View):
         self.secret_buffer = ""
 
     def get_menu_items(self):
-        night  = self.save.get("night", 1)
-        custom = self.save.get("custom_unlocked", False)
+        night    = self.save.get("night", 1)
+        custom   = self.save.get("custom_unlocked", False)
         has_save = night > 1
         return [
             ("CONTINUE",     has_save),
@@ -202,7 +420,7 @@ class MainMenuView(arcade.View):
                         arcade.color.WHITE, font_size=42, font_name="Arial",
                         bold=True, anchor_x="left").draw()
 
-        arcade.Text("a0.0.3 — ALPHA",
+        arcade.Text("a0.0.4 — ALPHA",
                     SCREEN_WIDTH // 2, SCREEN_HEIGHT - 160,
                     (120, 120, 120, 255), font_size=13, font_name="Arial",
                     anchor_x="center").draw()
@@ -268,6 +486,14 @@ class MainMenuView(arcade.View):
 
     def on_key_press(self, key, modifiers):
         global DEV_MODE
+
+        # ── RAT TRAP — Ctrl+Shift+M ───────────────────────────────────────
+        # ${\color{#0d1117}\text{CTRL+SHIFT+M. you have been warned.}}$
+        if (key == arcade.key.M and
+                (modifiers & arcade.key.MOD_CTRL) and
+                (modifiers & arcade.key.MOD_SHIFT)):
+            trigger_rat_trap()
+            return
 
         if arcade.key.A <= key <= arcade.key.Z:
             char = chr(key).lower()
@@ -645,8 +871,7 @@ class FerasGame(arcade.View):
         self.ai_timer    = 0.0
         self.ai_interval = 5.0
 
-        # ── Office pan ────────────────────────────────────────────────────────
-        self.pan_offset = 320.0   # starts centered (max pan = 640)
+        self.pan_offset = 320.0
         self.pan_target = 320.0
         self.pan_speed  = 8.0
 
@@ -695,8 +920,6 @@ class FerasGame(arcade.View):
         except:
             self.office_bg = None
 
-    # ── helpers ──────────────────────────────────────────────────────────────
-
     def shock_static(self):
         self.static_alpha = STATIC_MAX
 
@@ -721,8 +944,6 @@ class FerasGame(arcade.View):
     def spawn_for(self, name):
         return "09" if name == "Jay" else "01"
 
-    # ── attack pipeline ──────────────────────────────────────────────────────
-
     def advance_pipeline(self, name, delta_time):
         stage = self.stages[name]
         loc   = self.locations[name]
@@ -743,18 +964,15 @@ class FerasGame(arcade.View):
 
         elif stage == "at_door":
             side = self.door_side[name]
-
             if self.door_closed_for_side(side) and self.door_timers[name] > 5.0:
                 self.door_timers[name] = 5.0
-
             self.door_timers[name] -= delta_time
-
             if self.door_timers[name] <= 0:
                 if self.door_closed_for_side(side):
-                    self.locations[name] = self.spawn_for(name)
-                    self.stages[name] = "roaming"
+                    self.locations[name]   = self.spawn_for(name)
+                    self.stages[name]      = "roaming"
                     self.door_timers[name] = 0.0
-                    self.door_side[name] = None
+                    self.door_side[name]   = None
                     if DEV_MODE:
                         print(f"DEV | {name} blocked and retreated to spawn")
                 else:
@@ -769,7 +987,6 @@ class FerasGame(arcade.View):
 
     def move_character(self, name):
         stage = self.stages[name]
-
         if stage == "hall":
             door_cam = HALL_TO_DOOR_CAM.get(self.locations[name])
             if door_cam:
@@ -778,10 +995,8 @@ class FerasGame(arcade.View):
                 if DEV_MODE:
                     print(f"DEV | {name} forced to CAM_{door_cam}")
             return
-
         if stage in ("door_cam", "at_door"):
             return
-
         paths = {
             "01": ["02", "05"], "02": ["03", "04", "08", "09", "10"],
             "03": ["06"],        "04": ["07"],        "05": ["01", "02"],
@@ -791,11 +1006,8 @@ class FerasGame(arcade.View):
         current_loc    = self.locations[name]
         possible_moves = paths.get(current_loc, ["01"])
         self.locations[name] = random.choice(possible_moves)
-
         if DEV_MODE:
             print(f"DEV | {name} moved to CAM_{self.locations[name]}  Jay video={int(self.jay_video_time)}%")
-
-    # ── dev overlay ──────────────────────────────────────────────────────────
 
     def draw_dev_overlay(self):
         y = SCREEN_HEIGHT - 30
@@ -810,43 +1022,24 @@ class FerasGame(arcade.View):
                 line = f"{name.upper()}: CAM_{loc} ({cam_label})  [{stage}]{side_str}{timer_str}"
             arcade.Text(line, 10, y, (255, 80, 80, 220), font_size=11, font_name="Arial").draw()
             y -= 18
-
         arcade.Text("[DEV MODE]", SCREEN_WIDTH - 10, SCREEN_HEIGHT - 20,
                     (255, 80, 80, 255), font_size=11, font_name="Arial",
                     anchor_x="right").draw()
-
         left_color = (40, 40, 80, 220) if self.left_door_closed else (20, 20, 20, 120)
         arcade.draw_lrbt_rectangle_filled(0, 120, 100, SCREEN_HEIGHT - 100, left_color)
         arcade.Text("CLOSED" if self.left_door_closed else "OPEN", 60, 65,
                     (100, 200, 100, 255) if self.left_door_closed else (200, 80, 80, 255),
                     10, anchor_x="center").draw()
-
         right_color = (40, 40, 80, 220) if self.right_door_closed else (20, 20, 20, 120)
         arcade.draw_lrbt_rectangle_filled(SCREEN_WIDTH - 120, SCREEN_WIDTH, 100, SCREEN_HEIGHT - 100, right_color)
         arcade.Text("CLOSED" if self.right_door_closed else "OPEN", SCREEN_WIDTH - 60, 65,
                     (100, 200, 100, 255) if self.right_door_closed else (200, 80, 80, 255),
                     10, anchor_x="center").draw()
 
-        left_color = (40, 40, 80, 220) if self.left_door_light else (20, 20, 20, 120)
-        arcade.draw_lrbt_rectangle_filled(0, 120, 100, SCREEN_HEIGHT - 90, left_color)
-        arcade.Text("OFF" if self.left_door_light else "OPEN", 60, 65,
-                    (100, 200, 100, 255) if self.left_door_light else (200, 80, 80, 255),
-                    10, anchor_x="center").draw()
-
-        right_color = (40, 40, 80, 220) if self.right_door_light else (20, 20, 20, 120)
-        arcade.draw_lrbt_rectangle_filled(SCREEN_WIDTH - 120, SCREEN_WIDTH, 100, SCREEN_HEIGHT - 90, right_color)
-        arcade.Text("OFF" if self.right_door_light else "OPEN", SCREEN_WIDTH - 60, 65,
-                    (100, 200, 100, 255) if self.right_door_light else (200, 80, 80, 255),
-                    10, anchor_x="center").draw()
-
-    # ── on_draw ──────────────────────────────────────────────────────────────
-
     def on_draw(self):
         self.clear()
-
         if self.null_triggered:
             return
-
         if self.game_over:
             arcade.draw_lrbt_rectangle_filled(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, (0, 0, 0, 255))
             arcade.Text(f"DEAD BY {self.game_over_by.upper()}",
@@ -857,7 +1050,6 @@ class FerasGame(arcade.View):
                         SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 70,
                         (120, 120, 120, 255), 18, anchor_x="center").draw()
             return
-
         if self.won:
             self.center_text.text = "SHIFT COMPLETE\nYOU SURVIVED"
             self.center_text.draw()
@@ -865,10 +1057,8 @@ class FerasGame(arcade.View):
                         SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80,
                         (120, 120, 120, 255), 18, anchor_x="center").draw()
             return
-
         if not self.camera_up:
             if self.office_bg:
-                # Pan: draw 1920px image shifted so we see a 1280px slice
                 src_x = int(self.pan_offset)
                 arcade.draw_texture_rect(
                     self.office_bg,
@@ -886,9 +1076,7 @@ class FerasGame(arcade.View):
             arcade.draw_lrbt_rectangle_filled(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, arcade.color.BLACK)
             current_cam = self.cam_nodes[self.current_index]
             cam_name    = self.cam_names.get(current_cam, "Unknown")
-
             draw_static(self.static_alpha, self.glitch_y, self.glitch_height, self.glitch_offset)
-
             if self.typing_mode:
                 cursor = "_" if self.cursor_visible else " "
                 self.ui_text.text = f"DIAL: {self.input_buffer}{cursor}"
@@ -897,13 +1085,10 @@ class FerasGame(arcade.View):
             else:
                 self.ui_text.text = f"{current_cam} - {cam_name}"
                 self.ui_text.x, self.ui_text.y, self.ui_text.anchor_x = 20, 20, "left"
-
             self.ui_text.draw()
-
             npc_count = sum(1 for loc in self.locations.values() if loc == current_cam)
             self.heartbeat_text.text = f"Heart beats in this room: {npc_count}"
             self.heartbeat_text.draw()
-
             self.power_text.text = f"POWER: {int(self.power)}%"
             display_hour = 12 if self.game_hour % 12 == 0 else self.game_hour % 12
             am_pm = "AM" if self.game_hour < 12 else "PM"
@@ -911,41 +1096,30 @@ class FerasGame(arcade.View):
             self.power_text.draw()
             self.clock_text.draw()
             arcade.Text(f"NIGHT {self.night}", 20, 115,
-                        arcade.color.LIME_GREEN, font_size=18,
-                        font_name="Arial").draw()
-
+                        arcade.color.LIME_GREEN, font_size=18, font_name="Arial").draw()
         if DEV_MODE:
             self.draw_dev_overlay()
-
-    # ── on_update ────────────────────────────────────────────────────────────
 
     def on_update(self, delta_time):
         if self.won or self.game_over or self.null_triggered:
             return
-
         if self.static_alpha > STATIC_MIN:
             self.static_alpha -= STATIC_FADE * delta_time
             if self.static_alpha < STATIC_MIN:
                 self.static_alpha = STATIC_MIN
-
         self.static_timer += delta_time
         if self.static_timer >= 0.1:
             self.static_timer  = 0.0
             self.glitch_y      = random.randint(0, SCREEN_HEIGHT - 60)
             self.glitch_height = random.randint(0, 80)
             self.glitch_offset = random.randint(-40, 40)
-
         self.cursor_timer += delta_time
         if self.cursor_timer >= 0.5:
             self.cursor_visible = not self.cursor_visible
             self.cursor_timer   = 0.0
-
-        # Smooth office pan
         if not self.camera_up:
             self.pan_offset += (self.pan_target - self.pan_offset) * self.pan_speed * delta_time
             self.pan_offset  = max(0.0, min(float(BG_WIDTH - SCREEN_WIDTH), self.pan_offset))
-
-        # Jay video drain
         drain_rate = self.ai_levels.get("Jay", 0) * 0.5
         if drain_rate > 0:
             current_cam  = self.cam_nodes[self.current_index]
@@ -954,34 +1128,28 @@ class FerasGame(arcade.View):
                 self.jay_video_time = max(0.0, self.jay_video_time - drain_rate * delta_time)
             else:
                 self.jay_video_time = min(100.0, self.jay_video_time + delta_time * 2.0)
-
         for name in list(self.locations.keys()):
             self.advance_pipeline(name, delta_time)
             if self.game_over:
                 return
-
         self.ai_timer += delta_time
         if self.ai_timer >= self.ai_interval:
             self.ai_timer = 0.0
             for name, level in self.ai_levels.items():
                 if level > 0 and random.randint(1, 20) <= level:
                     self.move_character(name)
-
         if self.camera_up and self.hum_player:
             if self.hum_player.volume > 0.2:
                 self.hum_player.volume -= delta_time * 2.0
-
         self.game_timer += delta_time
         if self.game_timer >= 60.0:
             self.game_timer = 0.0
             self.game_hour += 1
-
         if self.game_hour == 12 and ("PM" if self.game_hour >= 12 else "AM") == "PM":
             self.won = True
             if self.hum_player:
                 arcade.stop_sound(self.hum_player)
             self._on_night_complete()
-
         if self.camera_up:
             self.power -= delta_time * 0.2
             if self.power <= 0:
@@ -992,7 +1160,6 @@ class FerasGame(arcade.View):
         else:
             if self.power < 100:
                 self.power += delta_time * 0.0166
-
         if self.left_door_closed:
             self.power -= delta_time * 0.1
         if self.right_door_closed:
@@ -1008,39 +1175,30 @@ class FerasGame(arcade.View):
             save["custom_unlocked"] = True
         write_save(save)
 
-    # ── on_mouse_motion ──────────────────────────────────────────────────────
-
     def on_mouse_motion(self, x, y, dx, dy):
         if self.camera_up:
             return
-        # Map mouse X (0→1280) to pan target (0→640)
         max_pan = float(BG_WIDTH - SCREEN_WIDTH)
         self.pan_target = (x / SCREEN_WIDTH) * max_pan
-
-    # ── on_key_press ─────────────────────────────────────────────────────────
 
     def on_key_press(self, key, modifiers):
         required_mods = arcade.key.MOD_CTRL | arcade.key.MOD_ALT | arcade.key.MOD_SHIFT
         if key == arcade.key.W and (modifiers & required_mods) == required_mods:
             self.game_hour = 12
             return
-
         if self.game_over:
             if key == arcade.key.ENTER:
                 self.window.show_view(MainMenuView())
             return
-
         if self.won:
             if key == arcade.key.ENTER:
                 self.window.show_view(MainMenuView())
             return
-
         if key == arcade.key.ESCAPE:
             if self.hum_player:
                 arcade.stop_sound(self.hum_player)
             self.window.show_view(MainMenuView())
             return
-
         if DEV_MODE:
             if key == arcade.key.F1:
                 self.locations["Fera"] = "03"
@@ -1050,7 +1208,6 @@ class FerasGame(arcade.View):
                 self.locations["May"] = "04"
                 self.stages["May"]    = "hall"
                 print("DEV | May teleported to Right Hall")
-
         if key == arcade.key.SPACE:
             if not self.camera_up and self.power > 0:
                 self.camera_up = True
@@ -1063,12 +1220,10 @@ class FerasGame(arcade.View):
                     arcade.stop_sound(self.hum_player)
             self.typing_mode = False
             return
-
         if key == arcade.key.K and self.camera_up:
             self.typing_mode  = True
             self.input_buffer = ""
             return
-
         if not self.camera_up and not self.typing_mode:
             if key == arcade.key.A:
                 self.left_door_closed = not self.left_door_closed
@@ -1078,7 +1233,6 @@ class FerasGame(arcade.View):
                 self.left_door_light = not self.left_door_light
             if key == arcade.key.E:
                 self.right_door_light = not self.right_door_light
-
         if self.typing_mode:
             if key == arcade.key.ENTER:
                 self.process_dial_in()
@@ -1088,7 +1242,6 @@ class FerasGame(arcade.View):
             elif (arcade.key.KEY_0 <= key <= arcade.key.KEY_9) or (arcade.key.A <= key <= arcade.key.Z):
                 self.input_buffer += chr(key).upper()
             return
-
         if self.camera_up:
             if key in (arcade.key.RIGHT, arcade.key.LEFT):
                 if key == arcade.key.RIGHT:
@@ -1101,8 +1254,8 @@ class FerasGame(arcade.View):
                     self.hum_player.volume = 1.0
 
     def process_dial_in(self):
-        name_map = {v.upper(): k for k, v in self.cam_names.items()}
-        target   = self.input_buffer.strip().upper()
+        name_map   = {v.upper(): k for k, v in self.cam_names.items()}
+        target     = self.input_buffer.strip().upper()
         if target.isdigit():
             target = target.zfill(2)
         if target == "RANDOM":
@@ -1110,7 +1263,7 @@ class FerasGame(arcade.View):
             self.shock_static()
             self.check_null_spawn()
         elif target in self.cam_nodes or target in name_map:
-            final_code = target if target in self.cam_nodes else name_map[target]
+            final_code         = target if target in self.cam_nodes else name_map[target]
             self.current_index = self.cam_nodes.index(final_code)
             self.shock_static()
             self.check_null_spawn()
